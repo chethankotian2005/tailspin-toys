@@ -1,14 +1,17 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import GameCard from '../components/GameCard.astro';
+import GameFilters from '../components/GameFilters.astro';
 import PageHero from '../components/PageHero.astro';
 import EmptyState from '../components/EmptyState.astro';
 import { getDatabase } from '../lib/db';
-import { getAllGames } from '../lib/games';
+import { getAllCategories, getAllGames, getAllPublishers } from '../lib/games';
 
 export const prerender = true;
 
 const games = await getAllGames(getDatabase());
+const categories = await getAllCategories(getDatabase());
+const publishers = await getAllPublishers(getDatabase());
 ---
 
 <Layout title="Tailspin Toys - Crowdfunding your new favorite game!">
@@ -24,10 +27,62 @@ const games = await getAllGames(getDatabase());
       {games.length === 0 ? (
         <EmptyState text="No games available at the moment." />
       ) : (
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="games-grid">
-          {games.map((game) => <GameCard game={game} />)}
-        </div>
+        <>
+          <GameFilters categories={categories} publishers={publishers} />
+          <div id="games-results" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" data-testid="games-grid">
+            {games.map((game) => <GameCard game={game} />)}
+          </div>
+          <div hidden data-testid="filter-empty-state">
+            <EmptyState text="No games match the selected filters." />
+          </div>
+        </>
       )}
     </div>
   </div>
 </Layout>
+
+<script>
+    const filterControls = document.querySelector<HTMLElement>('[data-filter-controls]');
+    const gamesGrid = document.querySelector<HTMLElement>('[data-testid="games-grid"]');
+    const noResults = document.querySelector<HTMLElement>('[data-testid="filter-empty-state"]');
+    const filterCount = document.querySelector<HTMLElement>('[data-filter-count]');
+
+    if (filterControls && gamesGrid && noResults && filterCount) {
+        const cards = Array.from(gamesGrid.querySelectorAll<HTMLElement>('[data-testid="game-card"]'));
+        const categoryFilters = Array.from(
+            filterControls.querySelectorAll<HTMLInputElement>('[data-category-filter]'),
+        );
+        const publisherFilter = filterControls.querySelector<HTMLSelectElement>('[data-publisher-filter]');
+
+        const updateResults = (): void => {
+            const selectedCategories = categoryFilters
+                .filter((filter) => filter.checked)
+                .map((filter) => filter.value);
+            const selectedPublisher = publisherFilter?.value ?? '';
+            let visibleCount = 0;
+
+            cards.forEach((card) => {
+                const categoryMatches =
+                    selectedCategories.length === 0 ||
+                    selectedCategories.includes(card.dataset.categoryId ?? '');
+                const publisherMatches =
+                    selectedPublisher === '' || selectedPublisher === card.dataset.publisherId;
+                const isVisible = categoryMatches && publisherMatches;
+
+                card.hidden = !isVisible;
+                if (isVisible) {
+                    visibleCount += 1;
+                }
+            });
+
+            filterCount.textContent = `${visibleCount} ${visibleCount === 1 ? 'game' : 'games'} shown`;
+            noResults.hidden = visibleCount !== 0;
+            gamesGrid.hidden = visibleCount === 0;
+        };
+
+        categoryFilters.forEach((filter) => filter.addEventListener('change', updateResults));
+        publisherFilter?.addEventListener('change', updateResults);
+        filterControls.addEventListener('reset', () => requestAnimationFrame(updateResults));
+        updateResults();
+    }
+</script>

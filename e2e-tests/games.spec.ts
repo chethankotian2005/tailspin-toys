@@ -1,6 +1,46 @@
 import { test, expect, type Response } from '@playwright/test';
 
 test.describe('Game Listing and Navigation', () => {
+  test('should filter games by category and publisher', async ({ page }) => {
+    await page.goto('/');
+
+    await test.step('Associate filters with the game results region', async () => {
+      await expect(page.getByTestId('game-filters')).toHaveAttribute('aria-controls', 'games-results');
+      await expect(page.getByTestId('games-grid')).toHaveAttribute('id', 'games-results');
+    });
+
+    const cards = page.getByTestId('game-card');
+    const initialCount = await cards.count();
+    const categoryFilter = page.locator('[data-testid^="category-filter-"]').first();
+    const categoryId = await categoryFilter.getAttribute('value');
+    const categoryName = (await categoryFilter.locator('xpath=..').innerText()).trim();
+    const publisherFilter = page.getByTestId('publisher-filter');
+    let publisherName = '';
+
+    await test.step('Filter by the first game category', async () => {
+      await page.getByTestId(`category-filter-${categoryId}`).check();
+      const visibleCards = page.locator('[data-testid="game-card"]:visible');
+      await expect(visibleCards.first()).toBeVisible();
+      expect(await visibleCards.count()).toBeLessThanOrEqual(initialCount);
+      await expect(visibleCards.first().getByTestId('game-category')).toHaveText(categoryName);
+      publisherName = (await visibleCards.first().getByTestId('game-publisher').innerText()).trim();
+    });
+
+    await test.step('Combine the category with its publisher', async () => {
+      await publisherFilter.selectOption({ label: publisherName });
+      const visibleCards = page.locator('[data-testid="game-card"]:visible');
+      await expect(visibleCards.first()).toBeVisible();
+      await expect(visibleCards.first().getByTestId('game-category')).toHaveText(categoryName);
+      await expect(visibleCards.first().getByTestId('game-publisher')).toHaveText(publisherName);
+    });
+
+    await test.step('Clear filters and restore all games', async () => {
+      await page.getByTestId('filter-reset').click();
+      await expect(page.getByTestId('game-card')).toHaveCount(initialCount);
+      await expect(page.getByTestId('filter-count')).toHaveText(`${initialCount} games shown`);
+    });
+  });
+
   test('should display games with titles on index page', async ({ page }) => {
     await test.step('Navigate to homepage', async () => {
       await page.goto('/');
