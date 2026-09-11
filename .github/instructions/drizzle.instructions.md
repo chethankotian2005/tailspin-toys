@@ -51,9 +51,35 @@ export async function getAllGameIds(db: Database): Promise<number[]> {
 }
 ```
 
+- Every exported function in `db/` and `src/lib/` must have a TSDoc/JSDoc comment.
+- The comment must describe the function's purpose, each parameter, and its return value. For data-access helpers, explicitly document the injectable `db` parameter and the result or not-found behaviour.
+- Comments should explain intent or a non-obvious database decision, never restate the query syntax. Remove or update comments that become stale when code changes.
+- Use explicit parameter and return types for all exported functions.
 - Always `order by` a stable column (title) so static builds are deterministic.
 - Map raw rows to the app-facing `Game`/`Publisher`/`Category` types in one place; don't leak Drizzle row shapes into components.
 - Keep ordering/lookup logic in `games.ts`, not in pages.
+
+Example documentation for a data-access helper:
+
+```ts
+/**
+ * Returns every publisher in deterministic alphabetical order.
+ *
+ * @param db - The database connection used to execute the query.
+ * @returns All publishers ordered by name.
+ */
+export async function getAllPublishers(db: Database): Promise<Publisher[]> {
+    const rows = await db.select().from(publishers).orderBy(asc(publishers.name));
+    return rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        description: row.description,
+    }));
+}
+```
+
+Here, `Publisher` is the app-facing type from `src/types/`; the helper maps
+Drizzle rows before returning them.
 
 ## Determinism
 
