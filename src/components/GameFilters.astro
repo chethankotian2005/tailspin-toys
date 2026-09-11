@@ -1,0 +1,64 @@
+---
+import type { Category, Publisher } from '../types/game';
+
+interface Props {
+    /** Categories available for filtering the game listing. */
+    categories: Category[];
+    /** Publishers available for filtering the game listing. */
+    publishers: Publisher[];
+}
+
+const { categories, publishers } = Astro.props;
+---
+
+<form
+    class="mb-8 rounded-xl border border-slate-700 bg-slate-800/70 p-6 shadow-lg"
+    data-filter-controls
+    data-testid="game-filters"
+    aria-controls="games-results"
+>
+    <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <fieldset>
+            <legend class="mb-3 text-sm font-semibold text-slate-100">Filter by category</legend>
+            <div class="flex flex-wrap gap-3">
+                {categories.map((category) => (
+                    <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-300">
+                        <input
+                            type="checkbox"
+                            name="category"
+                            value={category.id}
+                            data-category-filter
+                            data-testid={`category-filter-${category.id}`}
+                            class="h-4 w-4 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-slate-800"
+                        />
+                        <span>{category.name}</span>
+                    </label>
+                ))}
+            </div>
+        </fieldset>
+
+        <div class="flex flex-col gap-2">
+            <label for="publisher-filter" class="text-sm font-semibold text-slate-100">Filter by publisher</label>
+            <select
+                id="publisher-filter"
+                name="publisher"
+                data-publisher-filter
+                data-testid="publisher-filter"
+                class="min-w-56 rounded-lg border border-slate-600 bg-slate-900 px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            >
+                <option value="">All publishers</option>
+                {publishers.map((publisher) => <option value={publisher.id}>{publisher.name}</option>)}
+            </select>
+        </div>
+
+        <button
+            type="reset"
+            data-filter-reset
+            data-testid="filter-reset"
+            class="rounded-lg border border-slate-600 px-4 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+        >
+            Clear filters
+        </button>
+    </div>
+    <p class="mt-4 text-sm text-slate-400" data-filter-count data-testid="filter-count" role="status" aria-live="polite"></p>
+</form>
